@@ -23,5 +23,9 @@ class Task(db.Model):
 
     __tablename__ = "tasks"
 
-    id = db.Column(postgresql.UUID, primary_key=True)
+    id = db.Column(postgresql.UUID, primary_key=True, server_default=sqlalchemy.text("gen_random_uuid()"))
     status = db.Column(sqlalchemy.Enum(TaskStatusEnum), nullable=False)
+    create_time = db.Column(sqlalchemy.DateTime, default=sqlalchemy.func.now(), nullable=False)
+    start_time = db.Column(sqlalchemy.DateTime)
+    execution_time = db.Column(sqlalchemy.DateTime)
+
