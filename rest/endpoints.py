@@ -17,7 +17,9 @@ async def create_task(request):
     """
 
     task = entities.Task.make()
-    await context.task_provider.store(task)
+    async with context.task_provider.transaction():
+        await context.task_provider.store(task)
+        await context.producer.put(task.id)
 
     return 201, task.to_dict()
 
