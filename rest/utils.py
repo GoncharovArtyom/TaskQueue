@@ -1,7 +1,7 @@
 import enum
 import functools
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from . import web
@@ -36,5 +36,7 @@ class Encoder(json.JSONEncoder):
             return o.isoformat()
         elif isinstance(o, enum.Enum):
             return o.value
+        elif isinstance(o, timedelta):
+            return str(o)
         else:
             super().default(o)

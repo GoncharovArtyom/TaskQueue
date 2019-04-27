@@ -29,7 +29,7 @@ class Task(db.Model):
     status = db.Column(sqlalchemy.Enum(TaskStatusEnum), nullable=False)
     create_time = db.Column(sqlalchemy.DateTime, nullable=False)
     start_time = db.Column(sqlalchemy.DateTime)
-    execution_time = db.Column(sqlalchemy.DateTime)
+    execution_time = db.Column(postgresql.INTERVAL)
 
     @classmethod
     def make(cls):
