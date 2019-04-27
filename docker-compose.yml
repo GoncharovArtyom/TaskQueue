@@ -10,7 +10,7 @@ services:
     ports:
       - ${DB_PORT}:5432
     volumes:
-      - data:/var/lib/postgresql
+      - data:/var/lib/postgresql/data
 
   rabbit:
     image: rabbitmq:latest
@@ -20,7 +20,66 @@ services:
     ports:
     - ${RABBITMQ_PORT}:5672
 
+  migration:
+    build:
+      context: .
+    environment:
+      DATABASE_URI: postgresql://${DB_USER}:${DB_PASS}@database/task_queue
+    command:
+      ["./wait-for-it.sh", "database:5432", "--",
+       "alembic", "upgrade", "head"]
+    depends_on:
+    - database
+
+  worker1:
+    build:
+      context: .
+    environment:
+      DATABASE_URI: postgresql://${DB_USER}:${DB_PASS}@database/task_queue
+      RABBITMQ_URI: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbit
+    command:
+      ["./wait-for-it.sh", "database:5432", "--",
+       "./wait-for-it.sh", "rabbit:5672", "--",
+       "python3", "run_worker.py"]
+    depends_on:
+      - rabbit
+      - database
+      - migration
+
+  worker2:
+    build:
+      context: .
+    environment:
+      DATABASE_URI: postgresql://${DB_USER}:${DB_PASS}@database/task_queue
+      RABBITMQ_URI: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbit
+    command:
+      ["./wait-for-it.sh", "database:5432", "--",
+       "./wait-for-it.sh", "rabbit:5672", "--",
+       "python3", "run_worker.py"]
+    depends_on:
+    - rabbit
+    - database
+    - migration
+
+  rest:
+    build:
+      context: .
+    environment:
+      DATABASE_URI: postgresql://${DB_USER}:${DB_PASS}@database/task_queue
+      RABBITMQ_URI: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbit
+    ports:
+    - ${REST_PORT}:3333
+    command:
+      ["./wait-for-it.sh", "database:5432", "--",
+       "./wait-for-it.sh", "rabbit:5672", "--",
+       "python3", "run_rest.py"]
+    depends_on:
+    - rabbit
+    - database
+    - worker1
+    - worker2
+    - migration
+
 volumes:
   data:
-    external:
-      name: data
+
