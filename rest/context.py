@@ -6,7 +6,7 @@ import gino
 
 import configs
 from database import TaskProvider
-from task_q import Producer
+from producer import Producer
 
 task_provider: TaskProvider = None
 producer: Producer = None
@@ -18,7 +18,7 @@ _connection = None
 
 async def initialize(app: aiohttp.web.Application):
     """
-    Инициализация task_provider.
+    Инициализация контекста.
 
     :return:
     """
@@ -30,6 +30,7 @@ async def initialize(app: aiohttp.web.Application):
 
     _connection = await aio_pika.connect(configs.RABBITMQ_URI, loop=asyncio.get_running_loop())
     channel = await _connection.channel()
+    await channel.declare_queue(configs.TASK_Q_NAME, durable=True)
     producer = Producer(channel.default_exchange)
 
     was_initialized = True
@@ -43,7 +44,7 @@ async def finalize(app: aiohttp.web.Application):
     :return:
     """
 
-    global _engine, _connection
+    global _engine, connection
 
     await _engine.close()
     await _connection.close()
