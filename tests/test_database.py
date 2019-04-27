@@ -1,12 +1,12 @@
+from uuid import uuid4
+
 import pytest
 
-from uuid import uuid4
 from database import TaskProvider, entities
 
 
 @pytest.mark.asyncio
 async def test_task_get_none(engine):
-
     task_provider = TaskProvider(engine)
 
     task = await task_provider.get(uuid4())
@@ -38,6 +38,7 @@ async def test_task_find(engine, new_task1, new_task2):
 
     assert len(tasks_from_db) == 2
 
+
 @pytest.mark.asyncio
 async def test_task_update(engine, new_task1):
     task_provider = TaskProvider(engine)
@@ -49,3 +50,25 @@ async def test_task_update(engine, new_task1):
     task1_from_db = await task_provider.get(new_task1.id)
 
     assert task1_from_db.status is entities.TaskStatusEnum.running
+
+
+@pytest.mark.asyncio
+async def test_transaction(engine, new_task1):
+    task_provider = TaskProvider(engine)
+
+    # тип исключений, чтобы прервать транзакцию
+    class CustomException(Exception):
+        pass
+
+    try:
+        async with task_provider.transaction():
+            await task_provider.store(new_task1)
+            raise CustomException
+    except CustomException:
+        pass
+
+    query = entities.Task.query.where(entities.Task.id == new_task1.id)
+    async with engine.acquire() as conn:
+        task_from_db = await conn.first(query)
+
+    assert task_from_db is None

@@ -1,3 +1,4 @@
+import contextlib
 from typing import Optional, List
 from uuid import UUID
 
@@ -17,7 +18,8 @@ class TaskProvider:
         :param engine: объект для выполнения запросов к БД.
         """
 
-        self._engine = engine
+        self._engine: gino.GinoEngine = engine
+        self._conn: Optional[gino.GinoConnection] = None
 
     async def get(self, identifier: UUID) -> Optional[entities.Task]:
         """
@@ -28,8 +30,11 @@ class TaskProvider:
         """
 
         query = entities.Task.query.where(entities.Task.id == identifier)
-        async with self._engine.acquire() as conn:
-            task = await conn.first(query)
+        if self._conn is not None:
+            task = await self._conn.first(query)
+        else:
+            async with self._engine.acquire() as conn:
+                task = await conn.first(query)
 
         return task
 
@@ -42,20 +47,26 @@ class TaskProvider:
         """
 
         query = entities.Task.insert().values(**task.to_dict())
-        async with self._engine.acquire() as conn:
-            await conn.status(query)
+        if self._conn is not None:
+            await self._conn.status(query)
+        else:
+            async with self._engine.acquire() as conn:
+                await conn.status(query)
 
-    async def find(self, query: BinaryExpression) -> List[entities.Task]:
+    async def find(self, expression: BinaryExpression) -> List[entities.Task]:
         """
         Получение списка всех задач, которые удовлетворяют условию.
 
-        :param query:
+        :param expression:
         :return:
         """
 
-        query = entities.Task.query.where(query)
-        async with self._engine.acquire() as conn:
-            tasks = await conn.all(query)
+        query = entities.Task.query.where(expression)
+        if self._conn is not None:
+            tasks = await self._conn.all(query)
+        else:
+            async with self._engine.acquire() as conn:
+                tasks = await conn.all(query)
 
         return tasks
 
@@ -68,6 +79,25 @@ class TaskProvider:
         """
 
         query = entities.Task.update.values(**task.to_dict()).where(entities.Task.id == task.id)
-        async with self._engine.acquire() as conn:
-            await conn.status(query)
+        if self._conn is not None:
+            await self._conn.status(query)
+        else:
+            async with self._engine.acquire() as conn:
+                await conn.status(query)
+
+    @contextlib.asynccontextmanager
+    async def transaction(self):
+        """
+        Менеджер контекста для использования транзакций.
+
+        :return:
+        """
+
+        async with self._engine.acquire() as conn, conn.transaction():
+            self._conn = conn
+
+            yield
+
+            self._conn = None
+
 
