@@ -1,0 +1,16 @@
+version: '3.3'
+
+services:
+  database:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASS=${DB_PASS}
+      - POSTGRES_DB=task_queue
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - data:/var/lib/postgresql
+
+volumes:
+  data:
