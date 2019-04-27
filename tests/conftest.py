@@ -7,6 +7,10 @@ import gino
 from database import entities
 
 
+task1_id = uuid4()
+task2_id = uuid4()
+
+
 @pytest.fixture(scope="session")
 def test_database_uri():
 
@@ -27,10 +31,24 @@ async def engine(test_database_uri):
 
 
 @pytest.fixture
-async def new_task(engine):
+async def new_task1(engine):
 
     task = entities.Task()
-    task.id = uuid4()
+    task.id = task1_id
+    task.status = entities.TaskStatusEnum.in_queue
+
+    yield task
+
+    query = entities.Task.delete.where(entities.Task.id == task.id)
+    async with engine.acquire() as conn:
+        await conn.status(query)
+
+
+@pytest.fixture
+async def new_task2(engine):
+
+    task = entities.Task()
+    task.id = task2_id
     task.status = entities.TaskStatusEnum.in_queue
 
     yield task
