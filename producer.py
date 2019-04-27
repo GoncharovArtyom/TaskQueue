@@ -11,9 +11,9 @@ class Producer:
     Класс для записи сообщений в очередь.
     """
 
-    def __init__(self, exchange: aio_pika.Exchange):
+    def __init__(self, channel_pool: aio_pika.pool.Pool):
 
-        self._exchange: aio_pika.Exchange = exchange
+        self._channel_pool = channel_pool
 
     async def put(self, identifier: Union[UUID, str]):
         """
@@ -29,7 +29,9 @@ class Producer:
             delivery_mode=aio_pika.DeliveryMode.PERSISTENT
         )
 
-        await self._exchange.publish(message, routing_key=configs.TASK_Q_NAME)
+        async with self._channel_pool.acquire() as channel:
+            await channel.default_exchange.publish(message, routing_key=configs.TASK_Q_NAME)
+
 
 
 

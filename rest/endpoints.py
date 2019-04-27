@@ -21,6 +21,8 @@ async def create_task(request):
         await context.task_provider.store(task)
         await context.producer.put(task.id)
 
+    await context.logger.info(f"Task {task.id} was created.")
+
     return 201, task.to_dict()
 
 
@@ -45,5 +47,7 @@ async def get_task(request):
 
     if task is None:
         raise web.HTTPNotFound
+
+    await context.logger.info(f"Send task {task.id} info.")
 
     return 200, task.to_dict()

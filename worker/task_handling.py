@@ -22,6 +22,8 @@ async def handler(message: aio_pika.IncomingMessage):
         if task is None:
             return
 
+        await context.logger.info(f"Start calculating task {task.id}.")
+
         start_time = datetime.now()
         task.start_time = start_time
         task.status = entities.TaskStatusEnum.running
@@ -33,6 +35,8 @@ async def handler(message: aio_pika.IncomingMessage):
         task.execution_time = end_time - start_time
         task.status = entities.TaskStatusEnum.completed
         await context.task_provider.update(task)
+
+        await context.logger.info(f"Task is done.")
 
 
 def work():
